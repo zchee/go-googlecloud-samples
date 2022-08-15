@@ -25,8 +25,6 @@ import (
 	pb "github.com/zchee/go-googlecloud-samples/run/grpc-ping/pkg/api/v1"
 )
 
-// [START cloudrun_grpc_server]
-// [START run_grpc_server]
 func main() {
 	log.Printf("grpc-ping: starting server...")
 
@@ -47,9 +45,6 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-// [END run_grpc_server]
-// [END cloudrun_grpc_server]
 
 // conn holds an open connection to the ping service.
 var conn *grpc.ClientConn

@@ -14,9 +14,6 @@
 
 package main
 
-// [START cloudrun_grpc_request_auth]
-// [START run_grpc_request_auth]
-
 import (
 	"context"
 	"fmt"
@@ -55,6 +52,3 @@ func pingRequestWithAuth(conn *grpc.ClientConn, p *pb.Request, audience string) 
 	client := pb.NewPingServiceClient(conn)
 	return client.Send(ctx, p)
 }
-
-// [END run_grpc_request_auth]
-// [END cloudrun_grpc_request_auth]
