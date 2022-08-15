@@ -21,7 +21,7 @@ import (
 
 	"google.golang.org/api/idtoken"
 	"google.golang.org/grpc"
-	grpcMetadata "google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/metadata"
 
 	pb "github.com/zchee/go-googlecloud-samples/run/grpc-ping/pkg/api/v1"
 )
@@ -46,7 +46,7 @@ func pingRequestWithAuth(conn *grpc.ClientConn, p *pb.Request, audience string) 
 	}
 
 	// Add token to gRPC Request.
-	ctx = grpcMetadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token.AccessToken)
+	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token.AccessToken)
 
 	// Send the request.
 	client := pb.NewPingServiceClient(conn)
