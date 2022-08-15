@@ -41,7 +41,7 @@ func main() {
 		log.Fatalf("net.Listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor())
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(UnaryServerInterceptor()))
 	pb.RegisterPingServiceServer(grpcServer, &pingService{})
 	if err = grpcServer.Serve(listener); err != nil {
 		log.Fatal(err)

@@ -70,7 +70,7 @@ func (s *pingService) SendUpstream(ctx context.Context, req *pb.Request) (*pb.Re
 // UnaryServerInterceptor is a gRPC server-side interceptor that provides reporting for Unary RPCs.
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		log.Printf("req: %#v, info.Server: %#v\n", req, info.Server)
+		fmt.Fprintf(os.Stderr, "req: %#v, info.Server: %#v\n", req, info.Server)
 
 		return handler(ctx, req)
 	}
