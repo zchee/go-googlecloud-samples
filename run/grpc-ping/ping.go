@@ -17,15 +17,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/zchee/go-googlecloud-samples/run/grpc-ping/pkg/api/v1"
+	zapcloudlogging "github.com/zchee/zap-cloudlogging"
 )
 
 type pingService struct {
@@ -33,7 +34,10 @@ type pingService struct {
 }
 
 func (s *pingService) Send(ctx context.Context, req *pb.Request) (*pb.Response, error) {
-	log.Print("sending ping response")
+	logger := zapcloudlogging.FromContext(ctx)
+
+	logger.Info("sending ping response")
+
 	return &pb.Response{
 		Pong: &pb.Pong{
 			Index:      1,
@@ -44,6 +48,8 @@ func (s *pingService) Send(ctx context.Context, req *pb.Request) (*pb.Response, 
 }
 
 func (s *pingService) SendUpstream(ctx context.Context, req *pb.Request) (*pb.Response, error) {
+	logger := zapcloudlogging.FromContext(ctx)
+
 	if conn == nil {
 		return nil, fmt.Errorf("no upstream connection configured")
 	}
@@ -56,21 +62,23 @@ func (s *pingService) SendUpstream(ctx context.Context, req *pb.Request) (*pb.Re
 	tokenAudience := "https://" + hostWithoutPort
 	resp, err := PingRequest(conn, p, tokenAudience, os.Getenv("GRPC_PING_UNAUTHENTICATED") == "")
 	if err != nil {
-		log.Printf("PingRequest: %q", err)
+		logger.Error("PingRequest", zap.Error(err))
 		c := status.Code(err)
 		return nil, status.Errorf(c, "Could not reach ping service: %s", status.Convert(err).Message())
 	}
 
-	log.Print("received upstream pong")
+	logger.Info("received upstream pong")
 	return &pb.Response{
 		Pong: resp.Pong,
 	}, nil
 }
 
 // UnaryServerInterceptor is a gRPC server-side interceptor that provides reporting for Unary RPCs.
-func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(pctx context.Context) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		fmt.Fprintf(os.Stderr, "req: %#v, info.Server: %#v\n", req, info.Server)
+
+		ctx = zapcloudlogging.NewContext(pctx, zapcloudlogging.FromContext(ctx))
 
 		return handler(ctx, req)
 	}

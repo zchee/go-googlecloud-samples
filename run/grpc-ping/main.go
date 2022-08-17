@@ -16,47 +16,59 @@
 package main
 
 import (
-	"log"
+	"context"
 	"net"
 	"os"
 
+	zapcloudlogging "github.com/zchee/zap-cloudlogging"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 
 	pb "github.com/zchee/go-googlecloud-samples/run/grpc-ping/pkg/api/v1"
 )
 
-func main() {
-	log.Printf("grpc-ping: starting server...")
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-		log.Printf("Defaulting to port %s", port)
-	}
-
-	listener, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		log.Fatalf("net.Listen: %v", err)
-	}
-
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(UnaryServerInterceptor()))
-	pb.RegisterPingServiceServer(grpcServer, &pingService{})
-	if err = grpcServer.Serve(listener); err != nil {
-		log.Fatal(err)
-	}
-}
-
 // conn holds an open connection to the ping service.
 var conn *grpc.ClientConn
+
+var logger = zap.New(zapcloudlogging.NewCore(zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(zapcore.DebugLevel).Level()))
 
 func init() {
 	if os.Getenv("GRPC_PING_HOST") != "" {
 		var err error
 		conn, err = NewConn(os.Getenv("GRPC_PING_HOST"), os.Getenv("GRPC_PING_INSECURE") != "")
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal("failed to NewConn", zap.Error(err))
 		}
 	} else {
-		log.Println("Starting without support for SendUpstream: configure with 'GRPC_PING_HOST' environment variable. E.g., example.com:443")
+		logger.Info("Starting without support for SendUpstream: configure with 'GRPC_PING_HOST' environment variable. E.g., example.com:443")
+	}
+}
+
+func main() {
+	logger.Info("grpc-ping: starting server...")
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		logger.Info("Defaulting to port", zap.String("port", port))
+	}
+
+	listener, err := net.Listen("tcp", ":"+port)
+	if err != nil {
+		logger.Fatal("net.Listen", zap.Error(err))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ctx = zapcloudlogging.NewContext(ctx, logger)
+
+	gsrv := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		UnaryServerInterceptor(ctx)),
+	)
+	pb.RegisterPingServiceServer(gsrv, &pingService{})
+	if err = gsrv.Serve(listener); err != nil {
+		logger.Fatal("could not serve", zap.Error(err))
 	}
 }
