@@ -34,9 +34,11 @@ var conn *grpc.ClientConn
 var logger = zap.New(zapcloudlogging.NewCore(zapcore.Lock(os.Stdout), zap.NewAtomicLevelAt(zapcore.DebugLevel).Level()))
 
 func init() {
+	ctx := context.Background()
+	ctx = zapcloudlogging.NewContext(ctx, logger)
 	if os.Getenv("GRPC_PING_HOST") != "" {
 		var err error
-		conn, err = NewConn(os.Getenv("GRPC_PING_HOST"), os.Getenv("GRPC_PING_INSECURE") != "")
+		conn, err = NewConn(ctx, os.Getenv("GRPC_PING_HOST"), os.Getenv("GRPC_PING_INSECURE") != "")
 		if err != nil {
 			logger.Fatal("failed to NewConn", zap.Error(err))
 		}
@@ -65,7 +67,7 @@ func main() {
 	ctx = zapcloudlogging.NewContext(ctx, logger)
 
 	gsrv := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		UnaryServerInterceptor(ctx)),
+		UnaryServerInterceptor(logger)),
 	)
 	pb.RegisterPingServiceServer(gsrv, &pingService{})
 	if err = gsrv.Serve(listener); err != nil {

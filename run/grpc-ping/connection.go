@@ -15,23 +15,30 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 
+	zapcloudlogging "github.com/zchee/zap-cloudlogging"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	grpc_insecure "google.golang.org/grpc/credentials/insecure"
 )
 
 // NewConn creates a new gRPC connection.
 // host should be of the form domain:port, e.g., example.com:443
-func NewConn(host string, insecure bool) (*grpc.ClientConn, error) {
+func NewConn(ctx context.Context, host string, insecure bool) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	if host != "" {
 		opts = append(opts, grpc.WithAuthority(host))
 	}
 
+	logger := zapcloudlogging.FromContext(ctx)
+	logger.Info("secure", zap.Bool("secure", !insecure))
+
 	if insecure {
-		opts = append(opts, grpc.WithInsecure())
+		opts = append(opts, grpc.WithTransportCredentials(grpc_insecure.NewCredentials()))
 	} else {
 		systemRoots, err := x509.SystemCertPool()
 		if err != nil {
@@ -43,5 +50,6 @@ func NewConn(host string, insecure bool) (*grpc.ClientConn, error) {
 		opts = append(opts, grpc.WithTransportCredentials(cred))
 	}
 
-	return grpc.Dial(host, opts...)
+	logger.Info("dialing ...", zap.String("host", host))
+	return grpc.DialContext(ctx, host, opts...)
 }

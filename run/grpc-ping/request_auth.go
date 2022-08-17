@@ -50,5 +50,6 @@ func pingRequestWithAuth(conn *grpc.ClientConn, p *pb.Request, audience string) 
 
 	// Send the request.
 	client := pb.NewPingServiceClient(conn)
+
 	return client.Send(ctx, p)
 }
