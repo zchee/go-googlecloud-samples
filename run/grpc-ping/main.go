@@ -18,8 +18,10 @@ package main
 import (
 	"context"
 	"net"
+	"net/http"
 	"os"
 
+	"cloud.google.com/go/compute/metadata"
 	zapcloudlogging "github.com/zchee/zap-cloudlogging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -47,8 +49,73 @@ func init() {
 	}
 }
 
+const (
+	// Project ID of the project the Cloud Run service or job belongs to
+	projectProjectID = "project/project-id"
+
+	// Project number of the project the Cloud Run service or job belongs to
+	projectNumericProjectID = "project/numeric-project-id"
+
+	// Region of this Cloud Run service or job, returns projects/PROJECT-NUMBER/regions/REGION
+	instanceRegion = "instance/region"
+
+	// Unique identifier of the container instance (also available in logs).
+	instanceID = "instance/id"
+
+	// Email for the runtime service account of this Cloud Run service or job.
+	instanceSADefaultEmail = "instance/service-accounts/default/email"
+
+	// Generates an OAuth2 access token for the service account of this Cloud Run service or job. The Cloud Run service agent is used to fetch a token. This endpoint will return a JSON response with an access_token attribute. Read more about how to extract and use this access token.
+	instanceSADefaultToken = "instance/service-accounts/default/token"
+)
+
+func fetchMetadata(mdc *metadata.Client, logger *zap.Logger) {
+	projectID, err := mdc.Get(projectProjectID)
+	if err != nil {
+		logger.Fatal("could not get project id from /computeMetadata/v1/project/project-id endpoint", zap.Error(err))
+	}
+
+	numericProjectID, err := mdc.Get(projectNumericProjectID)
+	if err != nil {
+		logger.Fatal("could not get numeric project id from /computeMetadata/v1/project/numeric-project-id endpoint", zap.Error(err))
+	}
+
+	region, err := mdc.Get(instanceRegion)
+	if err != nil {
+		logger.Fatal("could not get project id from /computeMetadata/v1/project/project-id endpoint", zap.Error(err))
+	}
+
+	id, err := mdc.Get(instanceID)
+	if err != nil {
+		logger.Fatal("could not get project id from /computeMetadata/v1/project/project-id endpoint", zap.Error(err))
+	}
+
+	saDefaultEmail, err := mdc.Get(instanceSADefaultEmail)
+	if err != nil {
+		logger.Fatal("could not get project id from /computeMetadata/v1/project/project-id endpoint", zap.Error(err))
+	}
+
+	saDefaultToken, err := mdc.Get(instanceSADefaultToken)
+	if err != nil {
+		logger.Fatal("could not get project id from /computeMetadata/v1/project/project-id endpoint", zap.Error(err))
+	}
+
+	logger.Info("metadata",
+		zap.String(projectProjectID, projectID),
+		zap.String(projectNumericProjectID, numericProjectID),
+		zap.String(instanceRegion, region),
+		zap.String(instanceID, id),
+		zap.String(instanceSADefaultEmail, saDefaultEmail),
+		zap.String(instanceSADefaultToken, saDefaultToken),
+	)
+}
+
 func main() {
 	logger.Info("grpc-ping: starting server...")
+
+	logger.Info("get metadata from metadata server")
+	mdc := metadata.NewClient(http.DefaultClient)
+	fetchMetadata(mdc, logger)
 
 	port := os.Getenv("PORT")
 	if port == "" {
